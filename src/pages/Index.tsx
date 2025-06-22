@@ -1,21 +1,34 @@
-
-import React, { useState } from 'react';
-import { PhotoUpload } from '@/components/PhotoUpload';
-import { CaptionGenerator } from '@/components/CaptionGenerator';
-import { PhotoEditor } from '@/components/PhotoEditor';
-import { Card } from '@/components/ui/card';
+import React, { useState } from "react";
+import { PhotoUpload } from "@/components/PhotoUpload";
+import { CaptionGenerator } from "@/components/CaptionGenerator";
+import { PhotoEditor } from "@/components/PhotoEditor";
+import { Card } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { ImageIcon, AlertTriangle } from "lucide-react";
 
 const Index = () => {
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
-  const [generatedCaption, setGeneratedCaption] = useState<string>('');
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [generatedCaption, setGeneratedCaption] = useState<string>("");
   const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   const handleImageUpload = (file: File) => {
     setUploadedImage(file);
     const previewUrl = URL.createObjectURL(file);
     setImagePreview(previewUrl);
-    setGeneratedCaption('');
+    setGeneratedCaption("");
   };
 
   const handleCaptionGenerated = (caption: string) => {
@@ -24,9 +37,19 @@ const Index = () => {
 
   const resetEditor = () => {
     setUploadedImage(null);
-    setImagePreview('');
-    setGeneratedCaption('');
+    setImagePreview("");
+    setGeneratedCaption("");
     setIsGeneratingCaption(false);
+    setShowResetDialog(false);
+  };
+
+  const handleUploadDifferentPhoto = () => {
+    // Check if user has a caption or is currently generating one
+    if (generatedCaption.trim() || isGeneratingCaption) {
+      setShowResetDialog(true);
+    } else {
+      resetEditor();
+    }
   };
 
   return (
@@ -37,7 +60,8 @@ const Index = () => {
             AI Photo Caption Editor
           </h1>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            Upload your photo, generate an AI caption, and customize how it appears on your image
+            Upload your photo, generate an AI caption, and customize how it
+            appears on your image
           </p>
         </div>
 
@@ -51,7 +75,7 @@ const Index = () => {
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-semibold">Your Photo</h2>
                     <button
-                      onClick={resetEditor}
+                      onClick={handleUploadDifferentPhoto}
                       className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
                     >
                       Upload Different Photo
@@ -85,6 +109,44 @@ const Index = () => {
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+              </div>
+              <AlertDialogTitle className="text-lg">
+                Unsaved Changes
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-gray-600">
+              {isGeneratingCaption
+                ? "You're currently generating a caption. Are you sure you want to upload a different photo and lose your progress?"
+                : "You have a caption that hasn't been saved. Are you sure you want to upload a different photo and lose your current work?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3">
+            <AlertDialogCancel asChild>
+              <Button variant="outline" className="flex-1">
+                Keep Current Photo
+              </Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                onClick={resetEditor}
+                variant="destructive"
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+              >
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Upload New Photo
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
