@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { CaptionGenerator } from "@/components/CaptionGenerator";
 import { PhotoEditor } from "@/components/PhotoEditor";
@@ -15,41 +15,185 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, AlertTriangle } from "lucide-react";
+import { ImageIcon, AlertTriangle, Plus } from "lucide-react";
+
+// Helper to generate unique IDs for photos
+const generateId = () => Math.random().toString(36).substr(2, 9);
+
+// Photo type
+interface Photo {
+  id: string;
+  file: File;
+  preview: string;
+  caption: string;
+}
+
+// Sidebar component
+const Sidebar: React.FC<{
+  photos: Photo[];
+  selectedPhotoId: string | null;
+  onSelect: (id: string) => void;
+  onUploadClick: () => void;
+  onDelete: (id: string) => void;
+}> = ({ photos, selectedPhotoId, onSelect, onUploadClick, onDelete }) => (
+  <aside className="w-28 bg-white border-r border-gray-200 flex flex-col items-center py-4 gap-4">
+    <Button
+      variant="outline"
+      size="icon"
+      className="mb-2"
+      onClick={onUploadClick}
+      title="Upload New Photo"
+    >
+      <Plus className="w-5 h-5" />
+    </Button>
+    <div className="flex flex-col gap-3 w-full items-center">
+      {photos.map((photo) => (
+        <div key={photo.id} className="relative group w-16 h-16">
+          <button
+            onClick={() => onSelect(photo.id)}
+            className={`rounded border-2 w-16 h-16 overflow-hidden flex items-center justify-center transition-all ${
+              selectedPhotoId === photo.id
+                ? "border-blue-500 ring-2 ring-blue-300"
+                : "border-gray-200 hover:border-blue-300"
+            }`}
+            style={{ background: "#f9f9f9" }}
+          >
+            <img
+              src={photo.preview}
+              alt="Thumbnail"
+              className="object-cover w-full h-full"
+            />
+          </button>
+          {/* X button appears on hover */}
+          <button
+            onClick={() => onDelete(photo.id)}
+            className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white border border-gray-300 text-gray-500 hover:bg-red-500 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow"
+            title="Remove photo"
+            tabIndex={-1}
+            type="button"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="w-3.5 h-3.5"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 8.586l4.95-4.95a1 1 0 111.414 1.415L11.414 10l4.95 4.95a1 1 0 01-1.414 1.414L10 11.414l-4.95 4.95a1 1 0 01-1.414-1.414L8.586 10l-4.95-4.95A1 1 0 115.05 3.636L10 8.586z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        </div>
+      ))}
+    </div>
+  </aside>
+);
 
 const Index = () => {
-  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
-  const [generatedCaption, setGeneratedCaption] = useState<string>("");
-  const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
+  // Array of photos
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  // ID of the currently selected photo
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
+  // For confirmation modal
   const [showResetDialog, setShowResetDialog] = useState(false);
+  // For caption generation state
+  const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
+  // For upload modal
+  const [showUpload, setShowUpload] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [photoIdToDelete, setPhotoIdToDelete] = useState<string | null>(null);
 
+  // Get the currently selected photo object
+  const selectedPhoto = photos.find((p) => p.id === selectedPhotoId) || null;
+
+  // Handle uploading a new photo
   const handleImageUpload = (file: File) => {
-    setUploadedImage(file);
     const previewUrl = URL.createObjectURL(file);
-    setImagePreview(previewUrl);
-    setGeneratedCaption("");
+    const newPhoto: Photo = {
+      id: generateId(),
+      file,
+      preview: previewUrl,
+      caption: "",
+    };
+    setPhotos((prev) => {
+      const updated = [...prev, newPhoto];
+      console.log("Photos after upload:", updated);
+      return updated;
+    });
+    setSelectedPhotoId(newPhoto.id);
+    console.log("Selected photo ID after upload:", newPhoto.id);
+    setShowUpload(false);
   };
 
+  // Handle updating the caption for the selected photo
   const handleCaptionGenerated = (caption: string) => {
-    setGeneratedCaption(caption);
+    if (!selectedPhotoId) return;
+    setPhotos((prev) => {
+      const updated = prev.map((photo) =>
+        photo.id === selectedPhotoId ? { ...photo, caption } : photo
+      );
+      console.log("Photos after caption update:", updated);
+      return updated;
+    });
   };
 
+  // Reset editor (deselect photo, but keep photos in state)
   const resetEditor = () => {
-    setUploadedImage(null);
-    setImagePreview("");
-    setGeneratedCaption("");
-    setIsGeneratingCaption(false);
+    setSelectedPhotoId(null);
     setShowResetDialog(false);
+    setIsGeneratingCaption(false);
+    console.log("Editor reset. Selected photo ID:", null);
   };
 
+  // Handle 'Upload Different Photo' (show modal if caption exists)
   const handleUploadDifferentPhoto = () => {
-    // Check if user has a caption or is currently generating one
-    if (generatedCaption.trim() || isGeneratingCaption) {
+    if (selectedPhoto && selectedPhoto.caption.trim()) {
       setShowResetDialog(true);
     } else {
       resetEditor();
     }
+  };
+
+  // Show upload modal or panel
+  const handleShowUpload = () => setShowUpload(true);
+  const handleHideUpload = () => setShowUpload(false);
+
+  // Handle deleting a photo
+  const handleDeletePhoto = (id: string) => {
+    setPhotos((prev) => {
+      const updated = prev.filter((photo) => photo.id !== id);
+      // If the deleted photo was selected, select another or none
+      if (selectedPhotoId === id) {
+        if (updated.length > 0) {
+          setSelectedPhotoId(updated[0].id);
+        } else {
+          setSelectedPhotoId(null);
+        }
+      }
+      return updated;
+    });
+  };
+
+  // Handle delete button click (show modal)
+  const handleDeleteClick = (id: string) => {
+    setPhotoIdToDelete(id);
+    setShowDeleteDialog(true);
+  };
+
+  // Confirm deletion
+  const confirmDeletePhoto = () => {
+    if (photoIdToDelete) {
+      handleDeletePhoto(photoIdToDelete);
+    }
+    setShowDeleteDialog(false);
+    setPhotoIdToDelete(null);
+  };
+
+  // Cancel deletion
+  const cancelDeletePhoto = () => {
+    setShowDeleteDialog(false);
+    setPhotoIdToDelete(null);
   };
 
   return (
@@ -65,49 +209,58 @@ const Index = () => {
           </p>
         </div>
 
-        <div className="max-w-6xl mx-auto">
-          {!uploadedImage ? (
+        {/* If no photos, show original intro/upload UI only */}
+        {photos.length === 0 ? (
+          <div className="max-w-6xl mx-auto">
             <PhotoUpload onImageUpload={handleImageUpload} />
-          ) : (
-            <div className="grid lg:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <Card className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold">Your Photo</h2>
-                    <button
-                      onClick={handleUploadDifferentPhoto}
-                      className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                    >
-                      Upload Different Photo
-                    </button>
-                  </div>
-                  <div className="rounded-lg overflow-hidden">
-                    <img
-                      src={imagePreview}
-                      alt="Uploaded preview"
-                      className="w-full h-auto max-h-96 object-contain bg-gray-50"
+          </div>
+        ) : (
+          <div className="max-w-6xl mx-auto flex">
+            {/* Sidebar always visible if there are photos */}
+            <Sidebar
+              photos={photos}
+              selectedPhotoId={selectedPhotoId}
+              onSelect={setSelectedPhotoId}
+              onUploadClick={handleShowUpload}
+              onDelete={handleDeleteClick}
+            />
+
+            <div className="flex-1">
+              {/* Show upload panel if upload is triggered */}
+              {showUpload && (
+                <div className="flex justify-center items-center h-full min-h-[400px]">
+                  <PhotoUpload onImageUpload={handleImageUpload} />
+                  <Button
+                    onClick={handleHideUpload}
+                    variant="ghost"
+                    className="ml-4"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+              {selectedPhoto && !showUpload && (
+                <div className="flex flex-col gap-8">
+                  <div className="w-full">
+                    <PhotoEditor
+                      imageUrl={selectedPhoto.preview}
+                      caption={selectedPhoto.caption}
+                      onCaptionChange={handleCaptionGenerated}
                     />
                   </div>
-                </Card>
-
-                <CaptionGenerator
-                  image={uploadedImage}
-                  onCaptionGenerated={handleCaptionGenerated}
-                  isGenerating={isGeneratingCaption}
-                  setIsGenerating={setIsGeneratingCaption}
-                />
-              </div>
-
-              <div>
-                <PhotoEditor
-                  imageUrl={imagePreview}
-                  caption={generatedCaption}
-                  onCaptionChange={setGeneratedCaption}
-                />
-              </div>
+                  <div className="w-full">
+                    <CaptionGenerator
+                      image={selectedPhoto.file}
+                      onCaptionGenerated={handleCaptionGenerated}
+                      isGenerating={isGeneratingCaption}
+                      setIsGenerating={setIsGeneratingCaption}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Confirmation Modal */}
@@ -142,6 +295,46 @@ const Index = () => {
               >
                 <ImageIcon className="w-4 h-4 mr-2" />
                 Upload New Photo
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmation Modal for deleting photo */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+              </div>
+              <AlertDialogTitle className="text-lg">
+                Delete Photo?
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-gray-600">
+              Deleting this photo will also delete its caption and any edits.
+              This action cannot be undone. Are you sure you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3">
+            <AlertDialogCancel asChild>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={cancelDeletePhoto}
+              >
+                Cancel
+              </Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                onClick={confirmDeletePhoto}
+                variant="destructive"
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+              >
+                Delete Photo
               </Button>
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -18,6 +18,9 @@ interface PhotoEditorProps {
   onCaptionChange: (caption: string) => void;
 }
 
+const MAX_WIDTH = 600;
+const MAX_HEIGHT = 600;
+
 // Font options with display names and actual font families
 const fontOptions = [
   { value: "Arial", label: "Arial", preview: "Arial" },
@@ -53,18 +56,59 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
   const [fontSize, setFontSize] = useState(24);
   const [textColor, setTextColor] = useState("#ffffff");
   const [fontFamily, setFontFamily] = useState("Arial");
+  const [canvasDims, setCanvasDims] = useState<{
+    width: number;
+    height: number;
+  }>({ width: MAX_WIDTH, height: MAX_HEIGHT });
+  const [originalDims, setOriginalDims] = useState<{
+    width: number;
+    height: number;
+  }>({ width: MAX_WIDTH, height: MAX_HEIGHT });
+  // Persist text position, angle, and scale
+  const [textState, setTextState] = useState({
+    left: canvasDims.width / 2,
+    top: canvasDims.height - 80,
+    angle: 0,
+    scaleX: 1,
+    scaleY: 1,
+  });
+
+  // Reset text position when image changes
+  useEffect(() => {
+    setTextState({
+      left: canvasDims.width / 2,
+      top: canvasDims.height - 80,
+      angle: 0,
+      scaleX: 1,
+      scaleY: 1,
+    });
+  }, [imageUrl, canvasDims.width, canvasDims.height]);
+
+  // Dynamically determine image size and set canvas size
+  useEffect(() => {
+    if (!imageUrl) return;
+    const img = new window.Image();
+    img.onload = () => {
+      let width = img.naturalWidth;
+      let height = img.naturalHeight;
+      setOriginalDims({ width, height });
+      // Scale down to fit max box
+      const scale = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height, 1);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+      setCanvasDims({ width, height });
+    };
+    img.src = imageUrl;
+  }, [imageUrl]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
-
     const canvas = new FabricCanvas(canvasRef.current, {
-      width: 600,
-      height: 400,
+      width: canvasDims.width,
+      height: canvasDims.height,
       backgroundColor: "#f5f5f5",
     });
-
     setFabricCanvas(canvas);
-
     // Add canvas-level double-click handler
     canvas.on("mouse:dblclick", (options) => {
       if (options.target && options.target.type === "text") {
@@ -74,62 +118,55 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
         canvas.renderAll();
       }
     });
-
     return () => {
       canvas.dispose();
     };
-  }, []);
+  }, [canvasDims.width, canvasDims.height]);
 
   useEffect(() => {
     if (!fabricCanvas || !imageUrl) return;
-
     // Load the image
     FabricImage.fromURL(imageUrl, {
       crossOrigin: "anonymous",
     }).then((img) => {
       if (!fabricCanvas) return;
-
       // Clear canvas
       fabricCanvas.clear();
-
-      // Scale image to fit canvas
-      const canvasWidth = fabricCanvas.width || 600;
-      const canvasHeight = fabricCanvas.height || 400;
+      // Scale image to fit canvas exactly
+      const canvasWidth = fabricCanvas.width || MAX_WIDTH;
+      const canvasHeight = fabricCanvas.height || MAX_HEIGHT;
       const imageWidth = img.width || 1;
       const imageHeight = img.height || 1;
-
       const scale = Math.min(
         canvasWidth / imageWidth,
         canvasHeight / imageHeight
       );
       img.scale(scale);
-
       // Center the image
-      fabricCanvas.centerObject(img);
-
+      img.left = (canvasWidth - img.getScaledWidth()) / 2;
+      img.top = (canvasHeight - img.getScaledHeight()) / 2;
       // Add image to canvas
       fabricCanvas.add(img);
-
       // Make image non-selectable and non-interactive
       img.selectable = false;
       img.evented = false;
-
       fabricCanvas.renderAll();
     });
-  }, [fabricCanvas, imageUrl]);
+  }, [fabricCanvas, imageUrl, canvasDims.width, canvasDims.height]);
 
   useEffect(() => {
     if (!fabricCanvas || !caption) return;
-
     // Remove existing text
     if (textObject) {
       fabricCanvas.remove(textObject);
     }
-
     // Add new text
     const text = new FabricText(caption, {
-      left: fabricCanvas.width ? fabricCanvas.width / 2 : 300,
-      top: fabricCanvas.height ? fabricCanvas.height - 80 : 320,
+      left: textState.left,
+      top: textState.top,
+      angle: textState.angle,
+      scaleX: textState.scaleX,
+      scaleY: textState.scaleY,
       fontSize: fontSize,
       fill: textColor,
       fontFamily: fontFamily,
@@ -141,33 +178,48 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
       hasControls: true,
       hasBorders: true,
     });
-
     fabricCanvas.add(text);
     setTextObject(text);
-
     // Add text editing listener
     const handleTextEdit = () => {
       if (text.text) {
         onCaptionChange(text.text);
       }
+      // Save position, angle, and scale only after modification is complete
+      setTextState({
+        left: text.left ?? canvasDims.width / 2,
+        top: text.top ?? canvasDims.height - 80,
+        angle: text.angle ?? 0,
+        scaleX: text.scaleX ?? 1,
+        scaleY: text.scaleY ?? 1,
+      });
     };
-
-    // Use a more generic event listener approach
     text.on("modified", handleTextEdit);
-
     fabricCanvas.renderAll();
-
     return () => {
       if (text) {
         text.off("modified", handleTextEdit);
       }
     };
-  }, [fabricCanvas, caption, fontSize, textColor, fontFamily, onCaptionChange]);
+  }, [
+    fabricCanvas,
+    caption,
+    fontSize,
+    textColor,
+    fontFamily,
+    onCaptionChange,
+    canvasDims.width,
+    canvasDims.height,
+    textState.left,
+    textState.top,
+    textState.angle,
+    textState.scaleX,
+    textState.scaleY,
+  ]);
 
   const handleFontSizeChange = (value: number[]) => {
     const newSize = value[0];
     setFontSize(newSize);
-
     if (textObject) {
       textObject.set("fontSize", newSize);
       fabricCanvas?.renderAll();
@@ -177,7 +229,6 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const color = e.target.value;
     setTextColor(color);
-
     if (textObject) {
       textObject.set("fill", color);
       fabricCanvas?.renderAll();
@@ -186,7 +237,6 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
 
   const handleFontChange = (value: string) => {
     setFontFamily(value);
-
     if (textObject) {
       textObject.set("fontFamily", value);
       fabricCanvas?.renderAll();
@@ -195,17 +245,56 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
 
   const downloadImage = () => {
     if (!fabricCanvas) return;
-
-    const dataURL = fabricCanvas.toDataURL({
-      format: "png",
-      quality: 1,
-      multiplier: 2,
+    // Create a temp canvas at the original image resolution
+    const tempCanvas = new FabricCanvas(null, {
+      width: originalDims.width,
+      height: originalDims.height,
+      backgroundColor: "#f5f5f5",
     });
-
-    const link = document.createElement("a");
-    link.download = "captioned-photo.png";
-    link.href = dataURL;
-    link.click();
+    // Add the image at full size
+    FabricImage.fromURL(imageUrl, {
+      crossOrigin: "anonymous",
+    }).then((img) => {
+      img.left = 0;
+      img.top = 0;
+      img.scaleX = 1;
+      img.scaleY = 1;
+      img.selectable = false;
+      img.evented = false;
+      tempCanvas.add(img);
+      // Scale text properties proportionally
+      const scaleX = originalDims.width / canvasDims.width;
+      const scaleY = originalDims.height / canvasDims.height;
+      const text = new FabricText(caption, {
+        left: textState.left * scaleX,
+        top: textState.top * scaleY,
+        angle: textState.angle,
+        scaleX: textState.scaleX * scaleX,
+        scaleY: textState.scaleY * scaleY,
+        fontSize: fontSize,
+        fill: textColor,
+        fontFamily: fontFamily,
+        textAlign: "center",
+        originX: "center",
+        originY: "center",
+        selectable: false,
+        editable: false,
+        hasControls: false,
+        hasBorders: false,
+      });
+      tempCanvas.add(text);
+      tempCanvas.renderAll();
+      const dataURL = tempCanvas.toDataURL({
+        format: "png",
+        quality: 1,
+        multiplier: 1,
+      });
+      const link = document.createElement("a");
+      link.download = "captioned-photo.png";
+      link.href = dataURL;
+      link.click();
+      tempCanvas.dispose();
+    });
   };
 
   return (
@@ -221,11 +310,19 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
             Download
           </Button>
         </div>
-
-        <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
-          <canvas ref={canvasRef} className="max-w-full" />
+        <div className="flex justify-center">
+          <div
+            className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50"
+            style={{ width: canvasDims.width, height: canvasDims.height }}
+          >
+            <canvas
+              ref={canvasRef}
+              width={canvasDims.width}
+              height={canvasDims.height}
+              className="block max-w-full h-auto"
+            />
+          </div>
         </div>
-
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
