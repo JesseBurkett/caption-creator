@@ -1,73 +1,68 @@
-# Welcome to your Lovable project
+# Caption It Create
 
-## Project info
+A modern web app to generate AI-powered captions for your photos, edit them with a beautiful UI, and download high-quality captioned images.
 
-**URL**: https://lovable.dev/projects/69507f75-8cd4-423c-820b-a1c29890a731
+## Features
 
-## How can I edit this code?
+- Upload multiple photos and switch between them
+- Generate captions using AI (Hugging Face Transformers)
+- Edit captions, font, color, and position directly on the image
+- Download high-resolution captioned images
+- Clean, responsive, and user-friendly interface
 
-There are several ways of editing your application.
+## Technologies Used
 
-**Use Lovable**
+- React + TypeScript
+- Vite
+- Tailwind CSS
+- shadcn/ui (Radix UI components)
+- Fabric.js (canvas editing)
+- Hugging Face Transformers (browser-based AI)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/69507f75-8cd4-423c-820b-a1c29890a731) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js (v18+ recommended)
+- npm (v9+ recommended)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Setup
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
+cd caption-it-create
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Build for Production
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+npm run build
+```
 
-**Use GitHub Codespaces**
+### Deploy to GitHub Pages
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. Set the `homepage` field in `package.json` to your GitHub Pages URL (e.g., `https://yourusername.github.io/caption-it-create`).
+2. Use a tool like [gh-pages](https://www.npmjs.com/package/gh-pages) or your preferred static hosting method.
 
-## What technologies are used for this project?
+## License
 
-This project is built with:
+This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- The included AI model ([nlpconnect/vit-gpt2-image-captioning](https://huggingface.co/nlpconnect/vit-gpt2-image-captioning)) and [Transformers.js](https://github.com/xenova/transformers.js) are licensed under the Apache 2.0 License.
 
-## How can I deploy this project?
+## Attribution
 
-Simply open [Lovable](https://lovable.dev/projects/69507f75-8cd4-423c-820b-a1c29890a731) and click on Share -> Publish.
+- [Hugging Face Transformers.js](https://github.com/xenova/transformers.js) and [nlpconnect/vit-gpt2-image-captioning](https://huggingface.co/nlpconnect/vit-gpt2-image-captioning) (Apache 2.0)
+- [shadcn/ui](https://ui.shadcn.com/) and [Radix UI](https://www.radix-ui.com/)
+- [Fabric.js](http://fabricjs.com/)
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+_This project is open source and not affiliated with any of the above organizations._
