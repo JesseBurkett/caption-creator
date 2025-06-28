@@ -201,11 +201,11 @@ const Index = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            AI Photo Caption Editor
+            Photo Caption Editor
           </h1>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            Upload your photo, generate an AI caption, and customize how it
-            appears on your image
+            Upload your photo, generate a caption, and customize how it appears
+            on your image
           </p>
         </div>
 
